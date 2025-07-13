@@ -1,0 +1,177 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  stories Story[]
+  accounts Account[]
+  sessions Session[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Story {
+  id                String   @id @default(cuid())
+  title             String
+  description       String?
+  genre             String
+  targetAge         String   // 'child' | 'teen' | 'adult' | 'all_ages'
+  tone              String[] // Array of tone keywords
+  chapterCount      Int
+  status            String   @default("planning") // 'planning' | 'writing' | 'reviewing' | 'completed'
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  userId            String
+
+  // Story planning data
+  themes            String[]
+  learningObjectives String[]
+  outline           String?
+
+  // Relations
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapters         Chapter[]
+  characters       Character[]
+  settings         Setting[]
+  agentSessions    AgentSession[]
+  questionnaire    Questionnaire?
+
+  @@map("stories")
+}
+
+model Chapter {
+  id          String   @id @default(cuid())
+  storyId     String   @map("story_id")
+  number      Int
+  title       String
+  content     String   @db.Text
+  status      String   @default("draft") // 'draft' | 'reviewed' | 'final'
+  wordCount   Int      @default(0)
+  summary     String?
+  keyLessons  String[]
+  illustration String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, number])
+  @@map("chapters")
+}
+
+model Character {
+  id          String @id @default(cuid())
+  storyId     String @map("story_id")
+  name        String
+  role        String // 'protagonist' | 'antagonist' | 'guide' | 'supporting'
+  archetype   String
+  description String @db.Text
+  growthArc   String @db.Text
+  symbolism   String @db.Text
+
+  // Relations
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@map("characters")
+}
+
+model Setting {
+  id          String @id @default(cuid())
+  storyId     String @map("story_id")
+  name        String
+  description String @db.Text
+  symbolism   String @db.Text
+  mood        String
+
+  // Relations
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@map("settings")
+}
+
+model AgentSession {
+  id         String   @id @default(cuid())
+  storyId    String   @map("story_id")
+  agentType  String   // 'soulscribe' | 'wisdom_weaver' | 'metaphor_architect' etc.
+  input      String   @db.Text
+  output     String   @db.Text
+  tokensUsed Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  // Relations
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@map("agent_sessions")
+}
+
+model Questionnaire {
+  id                   String   @id @default(cuid())
+  storyId              String   @unique @map("story_id")
+  genre                String
+  targetAge            String
+  chapterCount         Int
+  estimatedLength      String   // 'short' | 'medium' | 'long'
+  primaryTheme         String
+  lifeLesson           String
+  spiritualElements    String[]
+  metaphorPreferences  String[]
+  characterTypes       String[]
+  settingPreferences   String[]
+  toneKeywords         String[]
+  writingStyle         String   // 'poetic' | 'conversational' | 'mystical' | 'playful'
+  chatResponses        Json[]   // Array of {question, answer, timestamp}
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // Relations
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@map("questionnaires")
+}
