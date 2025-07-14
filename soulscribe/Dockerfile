@@ -46,6 +46,10 @@ COPY --from=builder /app/package.json ./package.json
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev --cache /tmp/empty-cache
 
+# Create directories with proper permissions
+RUN mkdir -p .next/cache && chown -R nextjs:nodejs .next
+RUN chown -R nextjs:nodejs /app
+
 USER nextjs
 
 EXPOSE 3000
