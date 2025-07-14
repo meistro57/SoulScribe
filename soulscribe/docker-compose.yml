@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://soulscribe:soulscribe_password@db:5432/soulscribe
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your-nextauth-secret-change-this-in-production
+      - NODE_ENV=production
+      # API Keys - these need to be set by the user
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # OAuth providers - optional
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - soulscribe-network
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=soulscribe
+      - POSTGRES_USER=soulscribe
+      - POSTGRES_PASSWORD=soulscribe_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - soulscribe-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soulscribe -d soulscribe"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - ADMINER_DEFAULT_SERVER=db
+    restart: unless-stopped
+    networks:
+      - soulscribe-network
+
+volumes:
+  postgres_data:
+
+networks:
+  soulscribe-network:
+    driver: bridge
